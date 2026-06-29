@@ -2,7 +2,7 @@
   "name": "My Big 3",
   "short_name": "Big 3",
   "description": "Your personalized sports dashboard — one team per sport, always in your pocket.",
-  "start_url": "./my-big-3.html",
+  "start_url": "./index.html",
   "display": "standalone",
   "orientation": "portrait",
   "background_color": "#0a0a0f",
