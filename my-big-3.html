@@ -1,0 +1,874 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>My Big 3</title>
+<link rel="manifest" href="manifest.json">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Big 3">
+<meta name="theme-color" content="#0a0a0f">
+<meta name="description" content="Your personalized sports dashboard — soccer, NFL, and NBA in one place.">
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap');
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --sat: env(safe-area-inset-top, 0px);
+    --sab: env(safe-area-inset-bottom, 0px);
+    --sal: env(safe-area-inset-left, 0px);
+    --sar: env(safe-area-inset-right, 0px);
+    --bg: #0a0a0f;
+    --surface: #111118;
+    --surface2: #1a1a24;
+    --border: #ffffff0f;
+    --border-lit: #ffffff1a;
+    --text: #f0f0f5;
+    --muted: #6b6b80;
+    --accent-soccer: #00e676;
+    --accent-nfl: #ff6b35;
+    --accent-nba: #c45cff;
+    --card-radius: 16px;
+    --transition: 0.2s cubic-bezier(0.4,0,0.2,1);
+  }
+
+  html { scroll-behavior: smooth; }
+  body {
+    font-family: 'Inter', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  .hidden { display: none !important; }
+
+  /* ── HEADER ── */
+  header {
+    position: sticky; top: 0; z-index: 100;
+    background: #0a0a0fcc;
+    backdrop-filter: blur(20px);
+    border-bottom: 1px solid var(--border);
+    padding: var(--sat) calc(24px + var(--sar)) 0 calc(24px + var(--sal));
+    display: flex; align-items: center; justify-content: space-between;
+    height: calc(60px + var(--sat));
+  }
+  .logo {
+    font-family: 'Bebas Neue', sans-serif; font-size: 28px; letter-spacing: 2px;
+    background: linear-gradient(90deg, #fff 0%, #888 100%);
+    -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
+  }
+  .logo span {
+    background: linear-gradient(90deg, var(--accent-soccer), var(--accent-nfl), var(--accent-nba));
+    -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
+  }
+  .header-right { display: flex; align-items: center; gap: 12px; }
+  .edit-btn {
+    display: flex; align-items: center; gap: 6px;
+    background: var(--surface2); border: 1px solid var(--border-lit);
+    color: var(--muted); padding: 7px 14px; border-radius: 8px;
+    font-size: 13px; font-family: 'Inter', sans-serif; cursor: pointer;
+    transition: all var(--transition);
+  }
+  .edit-btn:hover { color: var(--text); border-color: #ffffff30; }
+  .live-dot {
+    width: 8px; height: 8px; background: var(--accent-soccer);
+    border-radius: 50%; animation: pulse 2s infinite;
+  }
+  @keyframes pulse {
+    0%,100% { opacity:1; transform:scale(1); }
+    50% { opacity:0.5; transform:scale(0.8); }
+  }
+
+  /* ── MAIN ── */
+  main {
+    max-width: 1100px; margin: 0 auto;
+    padding: 32px calc(24px + var(--sar)) calc(80px + var(--sab)) calc(24px + var(--sal));
+  }
+  .dashboard-label {
+    font-family: 'JetBrains Mono', monospace; font-size: 11px;
+    color: var(--muted); letter-spacing: 2px; text-transform: uppercase; margin-bottom: 24px;
+  }
+
+  /* ── SEASON LABELS ── */
+  .season-section-label {
+    display: flex; align-items: center; gap: 10px;
+    margin-bottom: 16px; margin-top: 32px;
+  }
+  .season-section-label:first-child { margin-top: 0; }
+  .season-pill {
+    font-family: 'JetBrains Mono', monospace; font-size: 10px;
+    letter-spacing: 1.5px; padding: 3px 10px; border-radius: 20px; text-transform: uppercase;
+  }
+  .pill-active { background: #00e67615; color: var(--accent-soccer); border: 1px solid #00e67630; }
+  .pill-offseason { background: #ffffff08; color: var(--muted); border: 1px solid var(--border); }
+  .season-divider { flex: 1; height: 1px; background: var(--border); }
+
+  /* ── CARDS ── */
+  .cards-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px,1fr)); gap: 16px; }
+  .team-card {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: var(--card-radius); overflow: hidden;
+    transition: border-color var(--transition), transform var(--transition);
+  }
+  .team-card:hover { border-color: var(--border-lit); transform: translateY(-2px); }
+  .team-card.off-season { opacity: 0.6; }
+  .card-accent-bar { height: 3px; width: 100%; }
+
+  .card-header {
+    padding: 18px 20px 14px;
+    display: flex; align-items: flex-start; justify-content: space-between; gap: 12px;
+  }
+  .team-identity { display: flex; align-items: center; gap: 12px; flex: 1; min-width: 0; }
+  .team-logo {
+    width: 52px; height: 52px; border-radius: 10px; background: var(--surface2);
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0; border: 1px solid var(--border); overflow: hidden; padding: 4px;
+  }
+  .team-logo img { width: 100%; height: 100%; object-fit: contain; }
+  .team-logo .fallback-emoji { font-size: 24px; line-height: 1; }
+  .team-meta { min-width: 0; }
+  .team-name {
+    font-family: 'Bebas Neue', sans-serif; font-size: 22px; letter-spacing: 1px;
+    line-height: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+  .team-sport-badge {
+    display: inline-block; font-family: 'JetBrains Mono', monospace; font-size: 10px;
+    padding: 2px 7px; border-radius: 4px; margin-top: 4px; letter-spacing: 1px; text-transform: uppercase;
+  }
+  .next-game-block { text-align: right; flex-shrink: 0; }
+  .next-game-label {
+    font-family: 'JetBrains Mono', monospace; font-size: 9px;
+    color: var(--muted); letter-spacing: 1px; text-transform: uppercase; margin-bottom: 2px;
+  }
+  .next-game-countdown { font-family: 'Bebas Neue', sans-serif; font-size: 18px; line-height: 1; }
+  .next-game-date { font-size: 11px; color: var(--muted); margin-top: 2px; font-family: 'JetBrains Mono', monospace; }
+
+  /* ── STATS ── */
+  .stats-row { display: flex; border-top: 1px solid var(--border); border-bottom: 1px solid var(--border); }
+  .stat-cell { flex: 1; padding: 12px 16px; text-align: center; border-right: 1px solid var(--border); }
+  .stat-cell:last-child { border-right: none; }
+  .stat-value { font-family: 'Bebas Neue', sans-serif; font-size: 22px; line-height: 1; }
+  .stat-label { font-family: 'JetBrains Mono', monospace; font-size: 9px; color: var(--muted); letter-spacing: 1px; text-transform: uppercase; margin-top: 3px; }
+
+  /* ── NEWS ── */
+  .news-section { padding: 16px 20px; }
+  .news-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
+  .news-title { font-family: 'JetBrains Mono', monospace; font-size: 10px; color: var(--muted); letter-spacing: 1.5px; text-transform: uppercase; }
+  .news-loading { display: flex; align-items: center; gap: 6px; font-family: 'JetBrains Mono', monospace; font-size: 10px; color: var(--muted); }
+  .news-spinner { width: 10px; height: 10px; border: 1.5px solid var(--border-lit); border-top-color: var(--muted); border-radius: 50%; animation: spin 0.8s linear infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .news-body { font-size: 13px; line-height: 1.6; color: #c0c0d0; min-height: 60px; }
+  .news-body.loading-text { color: var(--muted); font-style: italic; }
+  .news-error { color: #ff6b6b; font-size: 12px; font-family: 'JetBrains Mono', monospace; }
+
+  /* ── SCHEDULE ── */
+  .schedule-strip { padding: 12px 20px 18px; display: flex; gap: 8px; overflow-x: auto; scrollbar-width: none; }
+  .schedule-strip::-webkit-scrollbar { display: none; }
+  .schedule-game {
+    flex-shrink: 0; background: var(--surface2); border: 1px solid var(--border);
+    border-radius: 8px; padding: 8px 12px; min-width: 100px; text-align: center;
+  }
+  .schedule-game.next-up { border-color: var(--team-accent, #ffffff30); }
+  .game-date { font-family: 'JetBrains Mono', monospace; font-size: 9px; color: var(--muted); letter-spacing: 1px; text-transform: uppercase; margin-bottom: 4px; }
+  .game-opponent { font-size: 12px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 80px; }
+  .game-location { font-size: 10px; color: var(--muted); margin-top: 2px; }
+
+  /* ── SPORT COLORS ── */
+  .sport-soccer .card-accent-bar { background: linear-gradient(90deg, var(--accent-soccer), #00b248); }
+  .sport-soccer .team-sport-badge { background: #00e67615; color: var(--accent-soccer); border: 1px solid #00e67630; }
+  .sport-soccer .stat-value { color: var(--accent-soccer); }
+  .sport-soccer { --team-accent: var(--accent-soccer); }
+  .sport-nfl .card-accent-bar { background: linear-gradient(90deg, var(--accent-nfl), #c94a1a); }
+  .sport-nfl .team-sport-badge { background: #ff6b3515; color: var(--accent-nfl); border: 1px solid #ff6b3530; }
+  .sport-nfl .stat-value { color: var(--accent-nfl); }
+  .sport-nfl { --team-accent: var(--accent-nfl); }
+  .sport-nba .card-accent-bar { background: linear-gradient(90deg, var(--accent-nba), #8a3bbf); }
+  .sport-nba .team-sport-badge { background: #c45cff15; color: var(--accent-nba); border: 1px solid #c45cff30; }
+  .sport-nba .stat-value { color: var(--accent-nba); }
+  .sport-nba { --team-accent: var(--accent-nba); }
+
+  /* ── MODAL ── */
+  .modal-overlay {
+    position: fixed; inset: 0; background: #0a0a0fee;
+    backdrop-filter: blur(12px); z-index: 200;
+    display: flex; align-items: flex-end; justify-content: center;
+    padding: 0;
+  }
+  .modal {
+    background: var(--surface); border: 1px solid var(--border-lit);
+    border-radius: 24px 24px 0 0; width: 100%; max-width: 600px;
+    padding: 28px 24px calc(28px + var(--sab));
+    max-height: 92vh; overflow-y: auto;
+  }
+  .modal-handle { width: 36px; height: 4px; background: var(--border-lit); border-radius: 2px; margin: 0 auto 20px; }
+  .modal-title { font-family: 'Bebas Neue', sans-serif; font-size: 32px; letter-spacing: 2px; margin-bottom: 4px; }
+  .modal-subtitle { font-size: 13px; color: var(--muted); margin-bottom: 28px; line-height: 1.5; }
+
+  /* ── SPORT TABS in modal ── */
+  .sport-tabs { display: flex; gap: 8px; margin-bottom: 20px; }
+  .sport-tab {
+    flex: 1; padding: 10px; border-radius: 10px; border: 1px solid var(--border);
+    background: var(--surface2); color: var(--muted); font-size: 13px; font-weight: 600;
+    cursor: pointer; text-align: center; transition: all var(--transition); font-family: 'Inter', sans-serif;
+  }
+  .sport-tab.active-soccer { border-color: var(--accent-soccer); color: var(--accent-soccer); background: #00e67610; }
+  .sport-tab.active-nfl   { border-color: var(--accent-nfl);    color: var(--accent-nfl);    background: #ff6b3510; }
+  .sport-tab.active-nba   { border-color: var(--accent-nba);    color: var(--accent-nba);    background: #c45cff10; }
+
+  /* ── SEARCH ── */
+  .search-wrap { position: relative; margin-bottom: 14px; }
+  .search-input {
+    width: 100%; background: var(--surface2); border: 1px solid var(--border-lit);
+    border-radius: 10px; padding: 10px 14px 10px 36px;
+    color: var(--text); font-size: 14px; font-family: 'Inter', sans-serif;
+    outline: none; transition: border-color var(--transition);
+  }
+  .search-input:focus { border-color: #ffffff30; }
+  .search-input::placeholder { color: var(--muted); }
+  .search-icon { position: absolute; left: 12px; top: 50%; transform: translateY(-50%); color: var(--muted); font-size: 14px; pointer-events: none; }
+
+  /* ── TEAM OPTIONS ── */
+  .team-options-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; max-height: 340px; overflow-y: auto; padding-right: 2px; scrollbar-width: thin; scrollbar-color: var(--border-lit) transparent; }
+  .team-option {
+    background: var(--surface2); border: 1px solid var(--border); border-radius: 10px;
+    padding: 10px 12px; cursor: pointer; transition: all var(--transition);
+    display: flex; align-items: center; gap: 10px; font-size: 13px; font-weight: 500; color: var(--muted);
+  }
+  .team-option:hover { border-color: var(--border-lit); color: var(--text); }
+  .opt-logo { width: 30px; height: 30px; object-fit: contain; flex-shrink: 0; }
+  .opt-logo-fallback { width: 30px; height: 30px; display: flex; align-items: center; justify-content: center; font-size: 18px; flex-shrink: 0; }
+  .opt-info { min-width: 0; }
+  .opt-name { font-size: 13px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .opt-league { font-size: 10px; color: var(--muted); font-family: 'JetBrains Mono', monospace; margin-top: 1px; }
+
+  .team-option.soccer-sel { border-color: var(--accent-soccer); background: #00e67608; color: var(--accent-soccer); }
+  .team-option.nfl-sel    { border-color: var(--accent-nfl);    background: #ff6b3508; color: var(--accent-nfl); }
+  .team-option.nba-sel    { border-color: var(--accent-nba);    background: #c45cff08; color: var(--accent-nba); }
+
+  .no-results { color: var(--muted); font-size: 13px; padding: 20px 0; text-align: center; font-style: italic; }
+
+  .modal-footer { margin-top: 20px; }
+  .save-btn {
+    width: 100%; padding: 14px; background: var(--text); color: var(--bg);
+    border: none; border-radius: 10px; font-family: 'Bebas Neue', sans-serif;
+    font-size: 20px; letter-spacing: 2px; cursor: pointer; transition: opacity var(--transition);
+  }
+  .save-btn:disabled { opacity: 0.3; cursor: not-allowed; }
+  .save-btn:not(:disabled):hover { opacity: 0.85; }
+  .selection-status { display: flex; gap: 8px; margin-bottom: 16px; }
+  .sel-chip {
+    flex: 1; padding: 6px 8px; border-radius: 8px; border: 1px solid var(--border);
+    background: var(--surface2); font-size: 11px; font-family: 'JetBrains Mono', monospace;
+    color: var(--muted); text-align: center; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+  .sel-chip.done-soccer { border-color: var(--accent-soccer); color: var(--accent-soccer); background: #00e67610; }
+  .sel-chip.done-nfl    { border-color: var(--accent-nfl);    color: var(--accent-nfl);    background: #ff6b3510; }
+  .sel-chip.done-nba    { border-color: var(--accent-nba);    color: var(--accent-nba);    background: #c45cff10; }
+
+  /* ── INSTALL BANNER ── */
+  .install-banner {
+    position: fixed; bottom: calc(16px + var(--sab)); left: 50%;
+    transform: translateX(-50%) translateY(120px);
+    background: var(--surface2); border: 1px solid var(--border-lit);
+    border-radius: 14px; padding: 14px 18px;
+    display: flex; align-items: center; gap: 14px;
+    z-index: 150; box-shadow: 0 8px 32px #00000080;
+    transition: transform 0.4s cubic-bezier(0.34,1.56,0.64,1);
+    max-width: calc(100vw - 48px); width: 360px;
+  }
+  .install-banner.visible { transform: translateX(-50%) translateY(0); }
+  .install-icon { font-size: 28px; flex-shrink: 0; }
+  .install-text { flex: 1; min-width: 0; }
+  .install-title { font-weight: 600; font-size: 14px; margin-bottom: 2px; }
+  .install-sub { font-size: 12px; color: var(--muted); }
+  .install-actions { display: flex; gap: 8px; flex-shrink: 0; }
+  .install-yes { background: var(--text); color: var(--bg); border: none; border-radius: 8px; padding: 8px 14px; font-size: 13px; font-weight: 600; cursor: pointer; font-family: 'Inter', sans-serif; white-space: nowrap; }
+  .install-no { background: transparent; color: var(--muted); border: 1px solid var(--border); border-radius: 8px; padding: 8px 10px; font-size: 13px; cursor: pointer; font-family: 'Inter', sans-serif; }
+
+  .refresh-row { display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px; }
+  .refresh-time { font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--muted); }
+
+  @media (max-width: 600px) {
+    main { padding: 20px 16px calc(60px + var(--sab)); }
+    .cards-grid { grid-template-columns: 1fr; }
+    .team-options-grid { grid-template-columns: repeat(2, 1fr); }
+    header { padding: var(--sat) 16px 0; }
+    .modal { padding: 24px 20px calc(24px + var(--sab)); }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">My <span>Big 3</span></div>
+  <div class="header-right">
+    <div class="live-dot"></div>
+    <button class="edit-btn" onclick="openModal()">⚙ My Teams</button>
+  </div>
+</header>
+
+<!-- MODAL -->
+<div class="modal-overlay hidden" id="modalOverlay">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <div class="modal-title">Pick Your <span style="background:linear-gradient(90deg,var(--accent-soccer),var(--accent-nfl),var(--accent-nba));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;">Big 3</span></div>
+    <div class="modal-subtitle">One team per sport. Switch tabs to pick each one.</div>
+
+    <div class="sport-tabs">
+      <button class="sport-tab" id="tab-soccer" onclick="switchTab('soccer')">⚽ Soccer</button>
+      <button class="sport-tab" id="tab-nfl"    onclick="switchTab('nfl')">🏈 NFL</button>
+      <button class="sport-tab" id="tab-nba"    onclick="switchTab('nba')">🏀 NBA</button>
+    </div>
+
+    <div class="search-wrap">
+      <span class="search-icon">🔍</span>
+      <input class="search-input" id="searchInput" type="text" placeholder="Search teams…" oninput="filterTeams()">
+    </div>
+
+    <div class="team-options-grid" id="teamOptionsGrid"></div>
+
+    <div class="selection-status" style="margin-top:16px;">
+      <div class="sel-chip" id="chip-soccer">⚽ Soccer</div>
+      <div class="sel-chip" id="chip-nfl">🏈 NFL</div>
+      <div class="sel-chip" id="chip-nba">🏀 NBA</div>
+    </div>
+
+    <div class="modal-footer">
+      <button class="save-btn" id="saveBtn" onclick="saveTeams()" disabled>Save My Lineup</button>
+    </div>
+  </div>
+</div>
+
+<!-- INSTALL BANNER -->
+<div class="install-banner" id="installBanner">
+  <div class="install-icon">🏆</div>
+  <div class="install-text">
+    <div class="install-title">Add to Home Screen</div>
+    <div class="install-sub">Install My Big 3 for quick access</div>
+  </div>
+  <div class="install-actions">
+    <button class="install-yes" id="installYes">Install</button>
+    <button class="install-no" id="installNo">✕</button>
+  </div>
+</div>
+
+<main>
+  <div id="emptyState" class="hidden" style="text-align:center;padding:80px 24px;">
+    <div style="font-size:56px;margin-bottom:16px;">🏆</div>
+    <div style="font-family:'Bebas Neue',sans-serif;font-size:32px;letter-spacing:2px;margin-bottom:8px;">No Teams Yet</div>
+    <div style="color:var(--muted);font-size:14px;">Tap "My Teams" to pick your Big 3.</div>
+  </div>
+  <div id="dashboard" class="hidden">
+    <div class="dashboard-label">// Your Dashboard</div>
+    <div class="refresh-row"><div class="refresh-time" id="lastUpdated"></div></div>
+    <div id="inSeasonSection"></div>
+    <div id="offSeasonSection"></div>
+  </div>
+</main>
+
+<script>
+// ─────────────────────────────────────────────────────────────────────────────
+// LOGO HELPERS
+// ESPN CDN pattern for official logos
+function espnNFLLogo(id)    { return `https://a.espncdn.com/i/teamlogos/nfl/500/${id}.png`; }
+function espnNBALogo(id)    { return `https://a.espncdn.com/i/teamlogos/nba/500/${id}.png`; }
+function espnSoccerLogo(id) { return `https://a.espncdn.com/i/teamlogos/soccer/500/${id}.png`; }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// TEAM DATA  (id = ESPN team id for logo CDN)
+const TEAMS = {
+  soccer: [
+    // Liga MX
+    { id:'6820', name:'Club América',      emoji:'🦅', league:'Liga MX' },
+    { id:'6873', name:'Cruz Azul',         emoji:'💎', league:'Liga MX' },
+    { id:'6826', name:'Chivas',            emoji:'🐐', league:'Liga MX' },
+    { id:'6850', name:'Tigres UANL',       emoji:'🐯', league:'Liga MX' },
+    { id:'6836', name:'Monterrey',         emoji:'⚽', league:'Liga MX' },
+    { id:'6840', name:'Pumas UNAM',        emoji:'🦁', league:'Liga MX' },
+    { id:'6843', name:'Santos Laguna',     emoji:'⚽', league:'Liga MX' },
+    { id:'6848', name:'Toluca',            emoji:'⚽', league:'Liga MX' },
+    { id:'6831', name:'León',              emoji:'⚽', league:'Liga MX' },
+    { id:'6821', name:'Atlas',             emoji:'🦊', league:'Liga MX' },
+    { id:'6857', name:'Tijuana',           emoji:'⚽', league:'Liga MX' },
+    { id:'6849', name:'Necaxa',            emoji:'⚽', league:'Liga MX' },
+    // La Liga
+    { id:'86',   name:'Real Madrid',       emoji:'👑', league:'La Liga' },
+    { id:'83',   name:'Barcelona',         emoji:'🔵', league:'La Liga' },
+    { id:'1068', name:'Atlético Madrid',   emoji:'🔴', league:'La Liga' },
+    { id:'1061', name:'Sevilla',           emoji:'⚽', league:'La Liga' },
+    { id:'1062', name:'Valencia',          emoji:'⚽', league:'La Liga' },
+    { id:'1065', name:'Villarreal',        emoji:'⚽', league:'La Liga' },
+    { id:'1070', name:'Athletic Bilbao',   emoji:'⚽', league:'La Liga' },
+    { id:'1067', name:'Real Betis',        emoji:'⚽', league:'La Liga' },
+    { id:'3747', name:'Real Sociedad',     emoji:'⚽', league:'La Liga' },
+    // Premier League
+    { id:'364',  name:'Manchester City',   emoji:'🔵', league:'Premier League' },
+    { id:'382',  name:'Liverpool',         emoji:'❤️', league:'Premier League' },
+    { id:'359',  name:'Arsenal',           emoji:'🔴', league:'Premier League' },
+    { id:'360',  name:'Chelsea',           emoji:'💙', league:'Premier League' },
+    { id:'360',  name:'Man United',        emoji:'🔴', league:'Premier League' },
+    { id:'370',  name:'Tottenham',         emoji:'⚽', league:'Premier League' },
+    { id:'387',  name:'Newcastle',         emoji:'⚽', league:'Premier League' },
+    { id:'399',  name:'Aston Villa',       emoji:'⚽', league:'Premier League' },
+    { id:'397',  name:'West Ham',          emoji:'⚽', league:'Premier League' },
+    // Serie A
+    { id:'93',   name:'Inter Milan',       emoji:'⚫', league:'Serie A' },
+    { id:'97',   name:'Juventus',          emoji:'⚫', league:'Serie A' },
+    { id:'94',   name:'AC Milan',          emoji:'🔴', league:'Serie A' },
+    { id:'100',  name:'Napoli',            emoji:'🔵', league:'Serie A' },
+    { id:'99',   name:'Roma',              emoji:'🟡', league:'Serie A' },
+    { id:'98',   name:'Lazio',             emoji:'🔵', league:'Serie A' },
+    // Bundesliga
+    { id:'123',  name:'Bayern Munich',     emoji:'🔴', league:'Bundesliga' },
+    { id:'124',  name:'Borussia Dortmund', emoji:'🟡', league:'Bundesliga' },
+    { id:'131',  name:'RB Leipzig',        emoji:'⚽', league:'Bundesliga' },
+    { id:'138',  name:'Bayer Leverkusen',  emoji:'⚽', league:'Bundesliga' },
+    // Ligue 1
+    { id:'160',  name:'PSG',               emoji:'🗼', league:'Ligue 1' },
+    { id:'162',  name:'Marseille',         emoji:'⚽', league:'Ligue 1' },
+    { id:'176',  name:'Monaco',            emoji:'⚽', league:'Ligue 1' },
+    // Champions League / top clubs
+    { id:'2607', name:'Ajax',              emoji:'⚽', league:'Eredivisie' },
+    { id:'241',  name:'Porto',             emoji:'🔵', league:'Primeira Liga' },
+    { id:'243',  name:'Benfica',           emoji:'🦅', league:'Primeira Liga' },
+  ],
+  nfl: [
+    { id:'buf', name:'Bills',       emoji:'🐃', city:'Buffalo' },
+    { id:'mia', name:'Dolphins',    emoji:'🐬', city:'Miami' },
+    { id:'ne',  name:'Patriots',    emoji:'🎖️', city:'New England' },
+    { id:'nyj', name:'Jets',        emoji:'✈️', city:'NY Jets' },
+    { id:'bal', name:'Ravens',      emoji:'🐦', city:'Baltimore' },
+    { id:'cle', name:'Browns',      emoji:'🟤', city:'Cleveland' },
+    { id:'pit', name:'Steelers',    emoji:'🔶', city:'Pittsburgh' },
+    { id:'cin', name:'Bengals',     emoji:'🐯', city:'Cincinnati' },
+    { id:'hou', name:'Texans',      emoji:'🤠', city:'Houston' },
+    { id:'ind', name:'Colts',       emoji:'🐎', city:'Indianapolis' },
+    { id:'jax', name:'Jaguars',     emoji:'🐆', city:'Jacksonville' },
+    { id:'ten', name:'Titans',      emoji:'⚡', city:'Tennessee' },
+    { id:'den', name:'Broncos',     emoji:'🐎', city:'Denver' },
+    { id:'kc',  name:'Chiefs',      emoji:'⚔️', city:'Kansas City' },
+    { id:'lv',  name:'Raiders',     emoji:'🏴‍☠️', city:'Las Vegas' },
+    { id:'lac', name:'Chargers',    emoji:'⚡', city:'LA Chargers' },
+    { id:'dal', name:'Cowboys',     emoji:'⭐', city:'Dallas' },
+    { id:'nyg', name:'Giants',      emoji:'🗽', city:'NY Giants' },
+    { id:'phi', name:'Eagles',      emoji:'🦅', city:'Philadelphia' },
+    { id:'wsh', name:'Commanders',  emoji:'🏛️', city:'Washington' },
+    { id:'chi', name:'Bears',       emoji:'🐻', city:'Chicago' },
+    { id:'det', name:'Lions',       emoji:'🦁', city:'Detroit' },
+    { id:'gb',  name:'Packers',     emoji:'🧀', city:'Green Bay' },
+    { id:'min', name:'Vikings',     emoji:'⚔️', city:'Minnesota' },
+    { id:'atl', name:'Falcons',     emoji:'🦅', city:'Atlanta' },
+    { id:'car', name:'Panthers',    emoji:'🐆', city:'Carolina' },
+    { id:'no',  name:'Saints',      emoji:'⚜️', city:'New Orleans' },
+    { id:'tb',  name:'Buccaneers',  emoji:'🏴‍☠️', city:'Tampa Bay' },
+    { id:'ari', name:'Cardinals',   emoji:'🐦', city:'Arizona' },
+    { id:'lar', name:'Rams',        emoji:'🐏', city:'LA Rams' },
+    { id:'sf',  name:'49ers',       emoji:'⛏️', city:'San Francisco' },
+    { id:'sea', name:'Seahawks',    emoji:'🦅', city:'Seattle' },
+  ],
+  nba: [
+    { id:'bos', name:'Celtics',     emoji:'☘️', city:'Boston' },
+    { id:'bkn', name:'Nets',        emoji:'🕸️', city:'Brooklyn' },
+    { id:'nyk', name:'Knicks',      emoji:'🗽', city:'New York' },
+    { id:'phi', name:'76ers',       emoji:'🔔', city:'Philadelphia' },
+    { id:'tor', name:'Raptors',     emoji:'🦖', city:'Toronto' },
+    { id:'chi', name:'Bulls',       emoji:'🐂', city:'Chicago' },
+    { id:'cle', name:'Cavaliers',   emoji:'⚔️', city:'Cleveland' },
+    { id:'det', name:'Pistons',     emoji:'⚙️', city:'Detroit' },
+    { id:'ind', name:'Pacers',      emoji:'🏎️', city:'Indiana' },
+    { id:'mil', name:'Bucks',       emoji:'🦌', city:'Milwaukee' },
+    { id:'atl', name:'Hawks',       emoji:'🦅', city:'Atlanta' },
+    { id:'cha', name:'Hornets',     emoji:'🐝', city:'Charlotte' },
+    { id:'mia', name:'Heat',        emoji:'🔥', city:'Miami' },
+    { id:'orl', name:'Magic',       emoji:'✨', city:'Orlando' },
+    { id:'wsh', name:'Wizards',     emoji:'🧙', city:'Washington' },
+    { id:'den', name:'Nuggets',     emoji:'⛏️', city:'Denver' },
+    { id:'min', name:'Timberwolves',emoji:'🐺', city:'Minnesota' },
+    { id:'okc', name:'Thunder',     emoji:'⚡', city:'Oklahoma City' },
+    { id:'por', name:'Trail Blazers',emoji:'🌹', city:'Portland' },
+    { id:'uth', name:'Jazz',        emoji:'🎵', city:'Utah' },
+    { id:'gsw', name:'Warriors',    emoji:'🌉', city:'Golden State' },
+    { id:'lac', name:'Clippers',    emoji:'⛵', city:'LA Clippers' },
+    { id:'lal', name:'Lakers',      emoji:'💜', city:'Los Angeles' },
+    { id:'pho', name:'Suns',        emoji:'☀️', city:'Phoenix' },
+    { id:'sac', name:'Kings',       emoji:'👑', city:'Sacramento' },
+    { id:'dal', name:'Mavericks',   emoji:'🐴', city:'Dallas' },
+    { id:'hou', name:'Rockets',     emoji:'🚀', city:'Houston' },
+    { id:'mem', name:'Grizzlies',   emoji:'🐻', city:'Memphis' },
+    { id:'nop', name:'Pelicans',    emoji:'🐦', city:'New Orleans' },
+    { id:'sas', name:'Spurs',       emoji:'⚙️', city:'San Antonio' },
+  ]
+};
+
+// ─────────────────────────────────────────────────────────────────────────────
+// SEASON STATUS  (June 2026)
+const SEASON_STATUS = {
+  soccer: { inSeason: true,  label: 'In Season' },
+  nfl:    { inSeason: false, label: 'Off-Season · Preseason Aug' },
+  nba:    { inSeason: false, label: 'Off-Season · Draft Jun 26' }
+};
+
+// ─────────────────────────────────────────────────────────────────────────────
+// STATE
+let selections  = { soccer: null, nfl: null, nba: null };
+let savedTeams  = null;
+let activeTab   = 'soccer';
+
+// ─────────────────────────────────────────────────────────────────────────────
+// STORAGE
+function loadSaved() {
+  try {
+    const raw = localStorage.getItem('big3_teams_v2');
+    if (raw) savedTeams = JSON.parse(raw);
+  } catch(e) {}
+}
+
+function persistTeams() {
+  try { localStorage.setItem('big3_teams_v2', JSON.stringify(savedTeams)); } catch(e) {}
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// LOGO URL
+function logoUrl(team, sport) {
+  if (sport === 'nfl')    return espnNFLLogo(team.id);
+  if (sport === 'nba')    return espnNBALogo(team.id);
+  if (sport === 'soccer') return espnSoccerLogo(team.id);
+  return null;
+}
+
+function logoImgHTML(team, sport, size = 30) {
+  const url = logoUrl(team, sport);
+  if (!url) return `<span class="opt-logo-fallback" style="font-size:${size*0.7}px">${team.emoji}</span>`;
+  return `<img class="opt-logo" src="${url}" width="${size}" height="${size}" 
+    onerror="this.style.display='none';this.nextSibling.style.display='flex'" 
+    alt="${team.name}" style="width:${size}px;height:${size}px">
+    <span class="opt-logo-fallback" style="display:none;font-size:${size*0.6}px">${team.emoji}</span>`;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// MODAL
+function openModal() {
+  // Pre-load selections from saved
+  if (savedTeams) {
+    ['soccer','nfl','nba'].forEach(s => {
+      if (savedTeams[s]) selections[s] = savedTeams[s];
+    });
+  }
+  buildTab(activeTab);
+  updateChips();
+  updateSaveBtn();
+  document.getElementById('modalOverlay').classList.remove('hidden');
+  document.getElementById('searchInput').value = '';
+}
+
+function closeModal() {
+  document.getElementById('modalOverlay').classList.add('hidden');
+}
+
+document.getElementById('modalOverlay').addEventListener('click', e => {
+  if (e.target === document.getElementById('modalOverlay')) closeModal();
+});
+
+function switchTab(sport) {
+  activeTab = sport;
+  document.getElementById('searchInput').value = '';
+  buildTab(sport);
+  // Update tab styles
+  ['soccer','nfl','nba'].forEach(s => {
+    const tab = document.getElementById(`tab-${s}`);
+    tab.className = 'sport-tab' + (s === sport ? ` active-${s}` : '');
+  });
+}
+
+function buildTab(sport) {
+  filterTeams();
+}
+
+function filterTeams() {
+  const q = document.getElementById('searchInput').value.toLowerCase().trim();
+  const sport = activeTab;
+  const teams = TEAMS[sport];
+  const grid = document.getElementById('teamOptionsGrid');
+  grid.innerHTML = '';
+
+  const filtered = q ? teams.filter(t =>
+    t.name.toLowerCase().includes(q) || (t.league || t.city || '').toLowerCase().includes(q)
+  ) : teams;
+
+  if (filtered.length === 0) {
+    grid.innerHTML = '<div class="no-results">No teams found</div>';
+    return;
+  }
+
+  filtered.forEach(team => {
+    const el = document.createElement('div');
+    el.className = 'team-option';
+    const isSel = selections[sport]?.id === team.id;
+    if (isSel) el.classList.add(`${sport}-sel`);
+
+    const sublabel = team.league || team.city || '';
+    el.innerHTML = `
+      ${logoImgHTML(team, sport, 30)}
+      <div class="opt-info">
+        <div class="opt-name">${team.name}</div>
+        <div class="opt-league">${sublabel}</div>
+      </div>`;
+
+    el.addEventListener('click', () => {
+      document.querySelectorAll('.team-option').forEach(o => o.classList.remove(`${sport}-sel`));
+      el.classList.add(`${sport}-sel`);
+      selections[sport] = team;
+      updateChips();
+      updateSaveBtn();
+    });
+
+    grid.appendChild(el);
+  });
+}
+
+function updateChips() {
+  ['soccer','nfl','nba'].forEach(s => {
+    const chip = document.getElementById(`chip-${s}`);
+    const icons = { soccer:'⚽', nfl:'🏈', nba:'🏀' };
+    if (selections[s]) {
+      chip.textContent = `${icons[s]} ${selections[s].name}`;
+      chip.className = `sel-chip done-${s}`;
+    } else {
+      chip.textContent = `${icons[s]} ${s.toUpperCase()}`;
+      chip.className = 'sel-chip';
+    }
+  });
+}
+
+function updateSaveBtn() {
+  document.getElementById('saveBtn').disabled =
+    !(selections.soccer && selections.nfl && selections.nba);
+}
+
+function saveTeams() {
+  savedTeams = {
+    soccer: { ...selections.soccer, sport: 'soccer' },
+    nfl:    { ...selections.nfl,    sport: 'nfl' },
+    nba:    { ...selections.nba,    sport: 'nba' },
+  };
+  persistTeams();
+  closeModal();
+  renderDashboard();
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// MOCK DATA
+function getMockSchedule(teamId, sport) {
+  const days = [4, 8, 15, 22, 29];
+  const now = new Date();
+  return days.map((d, i) => {
+    const date = new Date(now);
+    date.setDate(date.getDate() + d);
+    return {
+      date: date.toLocaleDateString('en-US', { month:'short', day:'numeric' }),
+      opponent: ['TBD','TBD','TBD','TBD','TBD'][i],
+      location: i % 2 === 0 ? 'Home' : 'Away'
+    };
+  });
+}
+
+function getMockStats(sport) {
+  const map = {
+    soccer: [{ value:'14W', label:'Wins' }, { value:'4D', label:'Draws' }, { value:'3L', label:'Losses' }],
+    nfl:    [{ value:'0-0', label:'Record' }, { value:'—', label:'Conf' }, { value:'Pre', label:'Season' }],
+    nba:    [{ value:'47W', label:'Wins' }, { value:'35L', label:'Losses' }, { value:'6th', label:'Conf' }],
+  };
+  return map[sport];
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// DASHBOARD
+function renderDashboard() {
+  if (!savedTeams) {
+    document.getElementById('emptyState').classList.remove('hidden');
+    document.getElementById('dashboard').classList.add('hidden');
+    return;
+  }
+  document.getElementById('emptyState').classList.add('hidden');
+  document.getElementById('dashboard').classList.remove('hidden');
+
+  const now = new Date();
+  document.getElementById('lastUpdated').textContent =
+    `Updated ${now.toLocaleTimeString('en-US', { hour:'numeric', minute:'2-digit' })}`;
+
+  const sports = ['soccer','nfl','nba'];
+  const inSeason  = sports.filter(s => SEASON_STATUS[s].inSeason);
+  const offSeason = sports.filter(s => !SEASON_STATUS[s].inSeason);
+
+  const inEl  = document.getElementById('inSeasonSection');
+  const offEl = document.getElementById('offSeasonSection');
+  inEl.innerHTML = '';
+  offEl.innerHTML = '';
+
+  if (inSeason.length) {
+    inEl.appendChild(makeSectionLabel('In Season', true));
+    const grid = document.createElement('div');
+    grid.className = 'cards-grid';
+    inSeason.forEach(s => grid.appendChild(makeCard(savedTeams[s], s, true)));
+    inEl.appendChild(grid);
+  }
+  if (offSeason.length) {
+    offEl.appendChild(makeSectionLabel('Off-Season', false));
+    const grid = document.createElement('div');
+    grid.className = 'cards-grid';
+    offSeason.forEach(s => grid.appendChild(makeCard(savedTeams[s], s, false)));
+    offEl.appendChild(grid);
+  }
+
+  sports.forEach(s => { if (savedTeams[s]) fetchNews(savedTeams[s], s); });
+}
+
+function makeSectionLabel(text, active) {
+  const div = document.createElement('div');
+  div.className = 'season-section-label';
+  div.innerHTML = `<div class="season-pill ${active ? 'pill-active' : 'pill-offseason'}">${text}</div><div class="season-divider"></div>`;
+  return div;
+}
+
+function makeCard(team, sport, inSeason) {
+  const sportLabel = sport === 'soccer' ? '⚽ Soccer' : sport === 'nfl' ? '🏈 NFL' : '🏀 NBA';
+  const stats    = getMockStats(sport);
+  const schedule = getMockSchedule(team.id, sport);
+
+  const card = document.createElement('div');
+  card.className = `team-card sport-${sport} ${inSeason ? '' : 'off-season'}`;
+  card.id = `card-${sport}`;
+
+  const url = logoUrl(team, sport);
+  const logoHTML = url
+    ? `<img src="${url}" style="width:44px;height:44px;object-fit:contain"
+        onerror="this.outerHTML='<span style=\\'font-size:24px\\'>${team.emoji}</span>'" alt="${team.name}">`
+    : `<span style="font-size:24px">${team.emoji}</span>`;
+
+  const statsHTML = stats.map(s => `
+    <div class="stat-cell">
+      <div class="stat-value">${s.value}</div>
+      <div class="stat-label">${s.label}</div>
+    </div>`).join('');
+
+  const schedHTML = schedule.map((g, i) => `
+    <div class="schedule-game ${i === 0 ? 'next-up' : ''}">
+      <div class="game-date">${g.date}</div>
+      <div class="game-opponent">${g.opponent}</div>
+      <div class="game-location">${g.location}</div>
+    </div>`).join('');
+
+  card.innerHTML = `
+    <div class="card-accent-bar"></div>
+    <div class="card-header">
+      <div class="team-identity">
+        <div class="team-logo">${logoHTML}</div>
+        <div class="team-meta">
+          <div class="team-name">${team.name}</div>
+          <div class="team-sport-badge">${sportLabel}</div>
+        </div>
+      </div>
+      <div class="next-game-block">
+        <div class="next-game-label">Next Game</div>
+        <div class="next-game-countdown">${inSeason ? `${schedule[0] ? '4d' : '—'}` : '—'}</div>
+        <div class="next-game-date">${inSeason ? schedule[0]?.date : SEASON_STATUS[sport].label}</div>
+      </div>
+    </div>
+    <div class="stats-row">${statsHTML}</div>
+    <div class="news-section">
+      <div class="news-header">
+        <div class="news-title">📰 News & Rumors</div>
+        <div class="news-loading" id="loader-${sport}"><div class="news-spinner"></div> Loading</div>
+      </div>
+      <div class="news-body loading-text" id="news-${sport}">Fetching latest intel on ${team.name}…</div>
+    </div>
+    <div class="schedule-strip">${schedHTML}</div>`;
+
+  return card;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// AI NEWS
+async function fetchNews(team, sport) {
+  const newsEl   = document.getElementById(`news-${sport}`);
+  const loaderEl = document.getElementById(`loader-${sport}`);
+  if (!newsEl) return;
+
+  const sportFull = sport === 'soccer' ? 'soccer/football' : sport.toUpperCase();
+  const sublabel  = team.league || team.city || '';
+  const prompt = `You are a sharp sports analyst. Give a 3-sentence update on ${team.name} (${sublabel}, ${sportFull}): (1) recent form or standing, (2) a notable trade rumor, roster move, or key storyline, (3) what to watch next. Be punchy and specific. No bullets, just prose.`;
+
+  try {
+    const res  = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-6',
+        max_tokens: 1000,
+        messages: [{ role: 'user', content: prompt }]
+      })
+    });
+    const data = await res.json();
+    const text = data?.content?.[0]?.text || 'No update available.';
+    newsEl.textContent = text;
+    newsEl.classList.remove('loading-text');
+    if (loaderEl) loaderEl.style.display = 'none';
+  } catch(err) {
+    newsEl.innerHTML = `<span class="news-error">⚠ Could not fetch news.</span>`;
+    if (loaderEl) loaderEl.style.display = 'none';
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// PWA
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => navigator.serviceWorker.register('./sw.js').catch(()=>{}));
+}
+
+let deferredPrompt = null;
+const installBanner = document.getElementById('installBanner');
+window.addEventListener('beforeinstallprompt', e => {
+  e.preventDefault(); deferredPrompt = e;
+  setTimeout(() => installBanner.classList.add('visible'), 3000);
+});
+document.getElementById('installYes').addEventListener('click', async () => {
+  installBanner.classList.remove('visible');
+  if (deferredPrompt) { deferredPrompt.prompt(); deferredPrompt = null; }
+});
+document.getElementById('installNo').addEventListener('click', () => {
+  installBanner.classList.remove('visible'); deferredPrompt = null;
+});
+window.addEventListener('appinstalled', () => {
+  installBanner.classList.remove('visible'); deferredPrompt = null;
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// INIT  ← THE FIX: only open modal if no saved teams
+function init() {
+  loadSaved();
+  // Always build the first tab so modal is ready
+  switchTab('soccer');
+
+  if (savedTeams) {
+    selections = {
+      soccer: savedTeams.soccer || null,
+      nfl:    savedTeams.nfl    || null,
+      nba:    savedTeams.nba    || null,
+    };
+    renderDashboard();
+    // Modal stays closed — user goes straight to dashboard
+  } else {
+    // First-time user: show modal
+    document.getElementById('emptyState').classList.add('hidden');
+    openModal();
+  }
+}
+
+init();
+</script>
+</body>
+</html>
